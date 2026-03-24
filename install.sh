@@ -435,6 +435,7 @@ enabled  = true
 port     = http,https
 filter   = sentinel-scanner
 logpath  = /var/log/nginx/*_access.log
+           /var/log/nginx/*_sentinel.log
            /var/log/nginx/access.log
 maxretry = 3
 findtime = 600
@@ -447,6 +448,7 @@ enabled  = true
 port     = http,https
 filter   = sentinel-exploit
 logpath  = /var/log/nginx/*_access.log
+           /var/log/nginx/*_sentinel.log
            /var/log/nginx/access.log
 maxretry = 1
 findtime = 600
@@ -459,6 +461,7 @@ enabled  = true
 port     = http,https
 filter   = sentinel-botnet
 logpath  = /var/log/nginx/*_access.log
+           /var/log/nginx/*_sentinel.log
            /var/log/nginx/access.log
 maxretry = 1
 findtime = 600
@@ -471,6 +474,7 @@ enabled  = true
 port     = http,https
 filter   = sentinel-ratelimit
 logpath  = /var/log/nginx/*_access.log
+           /var/log/nginx/*_sentinel.log
            /var/log/nginx/access.log
 maxretry = 100
 findtime = 60
@@ -483,6 +487,7 @@ enabled  = true
 port     = http,https
 filter   = sentinel-bruteforce
 logpath  = /var/log/nginx/*_access.log
+           /var/log/nginx/*_sentinel.log
            /var/log/nginx/access.log
 maxretry = 15
 findtime = 300
