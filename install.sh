@@ -361,6 +361,16 @@ for script in notify.sh sender.sh whitelist-update.sh daily-report.sh health-che
         chmod +x "${SENTINEL_BIN}/sentinel-${script}"
     fi
 done
+
+# --- Test va Uninstall scriptlar ---
+if [ -f "${SCRIPT_DIR}/test.sh" ]; then
+    cp "${SCRIPT_DIR}/test.sh" "${SENTINEL_BIN}/sentinel-test.sh"
+    chmod +x "${SENTINEL_BIN}/sentinel-test.sh"
+fi
+if [ -f "${SCRIPT_DIR}/uninstall.sh" ]; then
+    cp "${SCRIPT_DIR}/uninstall.sh" "${SENTINEL_BIN}/sentinel-uninstall.sh"
+    chmod +x "${SENTINEL_BIN}/sentinel-uninstall.sh"
+fi
 echo "  Scriptlar — OK"
 
 # ============================================
@@ -610,6 +620,8 @@ echo ""
 echo "============================================"
 echo ""
 echo "Foydali buyruqlar:"
+echo "  sentinel-test.sh                          — Sentinel test"
+echo "  sentinel-uninstall.sh                     — Sentinel o'chirish"
 echo "  fail2ban-client status                    — umumiy holat"
 echo "  fail2ban-client status sentinel-scanner   — scanner jail"
 echo "  fail2ban-client banned                    — barcha blocked IP'lar"
