@@ -1,0 +1,6 @@
+attacked/
+.DS_Store
+.idea/
+.claude/
+*.log
+/tmp/
