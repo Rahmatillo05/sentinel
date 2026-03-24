@@ -293,16 +293,28 @@ chmod 600 "${SENTINEL_DIR}/sentinel.conf"
 echo "  sentinel.conf — OK (chmod 600)"
 
 # --- Whitelist ---
-if [ -f "${SCRIPT_DIR}/config/whitelist.conf" ]; then
-    cp "${SCRIPT_DIR}/config/whitelist.conf" "${SENTINEL_DIR}/whitelist.conf"
-else
-    cat > "${SENTINEL_DIR}/whitelist.conf" << 'WL'
+# Qayta install'da mavjud whitelist.conf saqlanadi
+if [ ! -f "${SENTINEL_DIR}/whitelist.conf" ]; then
+    if [ -f "${SCRIPT_DIR}/config/whitelist.conf" ]; then
+        cp "${SCRIPT_DIR}/config/whitelist.conf" "${SENTINEL_DIR}/whitelist.conf"
+    else
+        cat > "${SENTINEL_DIR}/whitelist.conf" << 'WL'
 127.0.0.1/8
 ::1
 10.0.0.0/8
 192.168.0.0/16
 172.16.0.0/12
 WL
+    fi
+fi
+
+# Foydalanuvchi kiritgan IP'larni whitelist.conf ga qo'shish
+if [ -n "$EXTRA_WHITELIST_IPS" ]; then
+    for extra_ip in $EXTRA_WHITELIST_IPS; do
+        if ! grep -qxF "$extra_ip" "${SENTINEL_DIR}/whitelist.conf" 2>/dev/null; then
+            echo "$extra_ip" >> "${SENTINEL_DIR}/whitelist.conf"
+        fi
+    done
 fi
 echo "  whitelist.conf — OK"
 
