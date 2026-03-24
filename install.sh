@@ -449,7 +449,7 @@ filter   = sentinel-scanner
 logpath  = /var/log/nginx/*_access.log
            /var/log/nginx/*_sentinel.log
            /var/log/nginx/access.log
-maxretry = 3
+maxretry = 10
 findtime = 600
 bantime  = 86400
 ignoreip = ${IGNORE_IPS}
@@ -462,7 +462,7 @@ filter   = sentinel-exploit
 logpath  = /var/log/nginx/*_access.log
            /var/log/nginx/*_sentinel.log
            /var/log/nginx/access.log
-maxretry = 1
+maxretry = 3
 findtime = 600
 bantime  = 604800
 ignoreip = ${IGNORE_IPS}
@@ -475,7 +475,7 @@ filter   = sentinel-botnet
 logpath  = /var/log/nginx/*_access.log
            /var/log/nginx/*_sentinel.log
            /var/log/nginx/access.log
-maxretry = 1
+maxretry = 2
 findtime = 600
 bantime  = 604800
 ignoreip = ${IGNORE_IPS}

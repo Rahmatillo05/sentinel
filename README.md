@@ -85,9 +85,9 @@ curl -k -A 'sqlmap/1.5' https://YOUR_DOMAIN/              # botnet
 
 | Jail | Hujum turi | Trigger | Ban |
 |------|-----------|---------|-----|
-| sentinel-scanner | `.env`, `.git`, wp-admin, phpmyadmin, actuator, cgi-bin | 3 urinish | 24 soat |
-| sentinel-exploit | SQLi, XSS, RCE, SSRF, Log4Shell, web shell | 1 urinish | 7 kun |
-| sentinel-botnet | sqlmap, nikto, python-requests, bo'sh user-agent | 1 urinish | 7 kun |
+| sentinel-scanner | `.env`, `.git`, wp-admin, phpmyadmin, actuator, cgi-bin | 10 urinish | 24 soat |
+| sentinel-exploit | SQLi, XSS, RCE, SSRF, Log4Shell, web shell | 3 urinish | 7 kun |
+| sentinel-botnet | sqlmap, nikto, python-requests, bo'sh user-agent | 2 urinish | 7 kun |
 | sentinel-ratelimit | 1 daqiqada 100+ ta 4xx xato | 100 urinish | 1 soat |
 | sentinel-bruteforce | /login, /auth ga takroriy POST | 15 urinish | 1 soat |
 | sentinel-recidive | Qayta-qayta bloklangan IP | 3 ta ban | 1 hafta → oshib boradi |
