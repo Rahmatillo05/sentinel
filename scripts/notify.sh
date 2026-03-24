@@ -3,19 +3,20 @@
 # Sentinel — Telegram Notification Script
 # Joylashuv: /usr/local/bin/sentinel-notify.sh
 # ============================================
+# Bu script xabarni to'g'ridan-to'g'ri yubormaydi.
+# Queue faylga yozadi → sender process navbatdan yuboradi.
+# DDoS paytida 100 ta ban = 100 ta curl emas, 1 ta sender.
+# ============================================
 
-# Config yuklash
 CONF_FILE="/etc/sentinel/sentinel.conf"
 if [ ! -f "$CONF_FILE" ]; then
     exit 1
 fi
 source "$CONF_FILE"
 
-# Log papka mavjudligi
-mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
+QUEUE_DIR="/var/log/sentinel/queue"
+mkdir -p "$QUEUE_DIR" 2>/dev/null || true
 
-# Parametrlar
-API_URL="https://api.telegram.org/bot${BOT_TOKEN}"
 HOSTNAME=$(hostname)
 ACTION=$1
 JAIL=$2
@@ -36,83 +37,50 @@ case "$JAIL" in
     *)                   ALERT_TYPE="$JAIL"                 ; BAN_DUR="noaniq" ;;
 esac
 
-# GeoIP ma'lumot olish (ip-api.com — bepul, sekundiga 45 so'rov)
-get_geoip() {
-    local ip=$1
-    local geo_data
-    geo_data=$(curl -s --max-time 5 "http://ip-api.com/json/${ip}?fields=status,country,city,isp,org" 2>/dev/null)
-
-    if echo "$geo_data" | grep -q '"status":"success"'; then
-        local country city isp
-        country=$(echo "$geo_data" | sed -n 's/.*"country":"\([^"]*\)".*/\1/p')
-        city=$(echo "$geo_data" | sed -n 's/.*"city":"\([^"]*\)".*/\1/p')
-        isp=$(echo "$geo_data" | sed -n 's/.*"isp":"\([^"]*\)".*/\1/p')
-        echo "${country}, ${city} (${isp})"
-    else
-        echo "noaniq"
-    fi
-}
-
-# Oxirgi so'rovlarni olish
-get_last_requests() {
-    local ip=$1
-    # IP dagi nuqtalarni escape qilish (grep regex uchun)
-    local ip_escaped="${ip//./\\.}"
-    local requests=""
-    requests=$(grep -F "$ip" /var/log/nginx/*_access.log /var/log/nginx/access.log 2>/dev/null \
-        | tail -5 \
-        | sed 's/.*"\(\/[^"]*\)".*/  \1/' 2>/dev/null)
-    echo "${requests:-  ma'lumot yo'q}"
-}
-
-# --- BAN xabari ---
 if [ "$ACTION" = "ban" ]; then
 
-    GEO=$(get_geoip "$IP")
-    REQUESTS=$(get_last_requests "$IP")
+    # Qaysi domenlarga so'rov yuborilgan (log fayl nomidan)
+    DOMAINS=$(grep -lF "$IP" /var/log/nginx/*_access.log 2>/dev/null \
+        | sed 's|.*/||; s|_access\.log||' \
+        | sort -u \
+        | tr '\n' ', ' \
+        | sed 's/,$//')
 
-    MESSAGE="SENTINEL ALERT
+    # Oxirgi so'rovlarni olish
+    REQUESTS=$(grep -F "$IP" /var/log/nginx/*_access.log /var/log/nginx/access.log 2>/dev/null \
+        | tail -5 \
+        | sed 's/.*"\(\/[^"]*\)".*/  \1/' 2>/dev/null)
+
+    MESSAGE="SENTINEL BAN
 ${ALERT_TYPE}
 
-Server:      ${HOSTNAME}
-IP:          ${IP}
-Joylashuv:   ${GEO}
-Urinishlar:  ${FAILURES} ta
-Ban muddati: ${BAN_DUR}
-Jail:        ${JAIL}
-Vaqt:        ${TIMESTAMP}
+Server:  ${HOSTNAME}
+IP:      ${IP}
+Geo:     https://ip-api.com/#${IP}
+Domen:   ${DOMAINS:-noaniq}
+Jail:    ${JAIL}
+Ban:     ${BAN_DUR}
+Vaqt:    ${TIMESTAMP}
 
-Oxirgi so'rovlar:
-${REQUESTS}"
+So'rovlar:
+${REQUESTS:-  -}"
 
-    RESULT=$(curl -s -w "\n%{http_code}" -X POST "${API_URL}/sendMessage" \
-        -d "chat_id=${CHAT_ID}" \
-        -d "disable_web_page_preview=true" \
-        --data-urlencode "text=${MESSAGE}" 2>&1)
-
-    HTTP_CODE=$(echo "$RESULT" | tail -1)
-    if [ "$HTTP_CODE" != "200" ]; then
-        echo "[SENTINEL] $(date) Telegram xabar yuborishda xato (HTTP $HTTP_CODE): ban $IP" >> /var/log/sentinel/sentinel.log
-    fi
-
-# --- UNBAN xabari ---
 elif [ "$ACTION" = "unban" ]; then
 
-    MESSAGE="SENTINEL AUTO-UNBAN
-Server: ${HOSTNAME}
-IP:     ${IP}
-Jail:   ${JAIL}
-Vaqt:   ${TIMESTAMP}
-Ban muddati tugadi, IP ochildi."
+    MESSAGE="SENTINEL UNBAN
+${HOSTNAME} | ${IP} | ${JAIL}
+${TIMESTAMP}"
 
-    RESULT=$(curl -s -w "\n%{http_code}" -X POST "${API_URL}/sendMessage" \
-        -d "chat_id=${CHAT_ID}" \
-        -d "disable_web_page_preview=true" \
-        --data-urlencode "text=${MESSAGE}" 2>&1)
+else
+    exit 0
+fi
 
-    HTTP_CODE=$(echo "$RESULT" | tail -1)
-    if [ "$HTTP_CODE" != "200" ]; then
-        echo "[SENTINEL] $(date) Telegram xabar yuborishda xato (HTTP $HTTP_CODE): unban $IP" >> /var/log/sentinel/sentinel.log
-    fi
+# Queue ga yozish (atomik — mv orqali)
+TEMP=$(mktemp "${QUEUE_DIR}/.tmp.XXXXXX")
+echo "$MESSAGE" > "$TEMP"
+mv "$TEMP" "${QUEUE_DIR}/$(date +%s%N).msg"
 
+# Sender ishlayaptimi tekshirish, yo'q bo'lsa ishga tushirish
+if [ ! -f /tmp/sentinel-sender.pid ] || ! kill -0 "$(cat /tmp/sentinel-sender.pid 2>/dev/null)" 2>/dev/null; then
+    /usr/local/bin/sentinel-sender.sh &
 fi
