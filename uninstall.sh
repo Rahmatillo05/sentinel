@@ -78,13 +78,24 @@ echo -n "Sentinel loglar o'chirilmoqda... "
 rm -rf /var/log/sentinel
 echo -e "${GREEN}OK${NC}"
 
-# --- Nginx deny map tozalash ---
-echo -n "Nginx deny map tozalanmoqda... "
+# --- Reload timer to'xtatish ---
+echo -n "Reload timer to'xtatilmoqda... "
+if [ -f /var/log/sentinel/sentinel-reload-timer.pid ]; then
+    kill "$(cat /var/log/sentinel/sentinel-reload-timer.pid)" 2>/dev/null || true
+fi
+if [ -f /var/log/sentinel/sentinel-sender.pid ]; then
+    kill "$(cat /var/log/sentinel/sentinel-sender.pid)" 2>/dev/null || true
+fi
+echo -e "${GREEN}OK${NC}"
+
+# --- Nginx deny map va config fayllar ---
+echo -n "Nginx sentinel fayllar tozalanmoqda... "
 if [ -f /etc/nginx/sentinel-deny.map ]; then
     > /etc/nginx/sentinel-deny.map
-    # Faylni o'chirmaymiz — Nginx configda include qilingan
-    # Bo'sh fayl qoladi, Nginx xato bermaydi
 fi
+rm -f /etc/nginx/sentinel-log-format.conf
+rm -f /etc/nginx/sentinel-security.conf
+rm -f /etc/nginx/sentinel-realip.conf
 echo -e "${GREEN}OK${NC}"
 
 # --- Cron joblar ---
@@ -105,15 +116,15 @@ echo "============================================"
 echo ""
 echo -e "${YELLOW}ESLATMA: Nginx konfiguratsiyasidan quyidagilarni qo'lda olib tashlang:${NC}"
 echo ""
-echo "  1. http {} blokidan:"
-echo "     - log_format sentinel ...;"
-echo "     - map \$remote_addr \$sentinel_blocked { ... }"
-echo "     - set_real_ip_from / real_ip_header (agar qo'shilgan bo'lsa)"
+echo "  1. nginx.conf dan include qatorlarni o'chiring:"
+echo "     include /etc/nginx/sentinel-log-format.conf;"
+echo "     include /etc/nginx/sentinel-security.conf;"
+echo "     include /etc/nginx/sentinel-realip.conf;"
 echo ""
 echo "  2. server {} bloklardan:"
-echo "     - access_log ... sentinel;"
-echo "     - if (\$sentinel_blocked) { return 403; }"
+echo "     access_log ... sentinel;  →  standart formatga qaytaring"
+echo "     if (\$sentinel_blocked) { return 403; }  →  o'chiring"
 echo ""
-echo "  3. Keyin: nginx -t && nginx -s reload"
+echo "  3. nginx -t && nginx -s reload"
 echo ""
 echo "============================================"

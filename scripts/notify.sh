@@ -12,7 +12,6 @@ CONF_FILE="/etc/sentinel/sentinel.conf"
 if [ ! -f "$CONF_FILE" ]; then
     exit 1
 fi
-source "$CONF_FILE"
 
 QUEUE_DIR="/var/log/sentinel/queue"
 mkdir -p "$QUEUE_DIR" 2>/dev/null || true
@@ -40,14 +39,14 @@ esac
 if [ "$ACTION" = "ban" ]; then
 
     # Qaysi domenlarga so'rov yuborilgan (log fayl nomidan)
-    DOMAINS=$(grep -lF "$IP" /var/log/nginx/*_access.log 2>/dev/null \
+    DOMAINS=$(grep -l "\[Client ${IP}\]" /var/log/nginx/*_access.log 2>/dev/null \
         | sed 's|.*/||; s|_access\.log||' \
         | sort -u \
         | tr '\n' ', ' \
         | sed 's/,$//')
 
     # Oxirgi so'rovlarni olish
-    REQUESTS=$(grep -F "$IP" /var/log/nginx/*_access.log /var/log/nginx/access.log 2>/dev/null \
+    REQUESTS=$(grep "\[Client ${IP}\]" /var/log/nginx/*_access.log /var/log/nginx/access.log 2>/dev/null \
         | tail -5 \
         | sed 's/.*"\(\/[^"]*\)".*/  \1/' 2>/dev/null)
 
@@ -81,6 +80,6 @@ echo "$MESSAGE" > "$TEMP"
 mv "$TEMP" "${QUEUE_DIR}/$(date +%s%N).msg"
 
 # Sender ishlayaptimi tekshirish, yo'q bo'lsa ishga tushirish
-if [ ! -f /tmp/sentinel-sender.pid ] || ! kill -0 "$(cat /tmp/sentinel-sender.pid 2>/dev/null)" 2>/dev/null; then
+if [ ! -f /var/log/sentinel/sentinel-sender.pid ] || ! kill -0 "$(cat /var/log/sentinel/sentinel-sender.pid 2>/dev/null)" 2>/dev/null; then
     /usr/local/bin/sentinel-sender.sh &
 fi

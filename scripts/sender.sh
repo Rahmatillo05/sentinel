@@ -12,10 +12,15 @@ CONF_FILE="/etc/sentinel/sentinel.conf"
 if [ ! -f "$CONF_FILE" ]; then
     exit 1
 fi
-source "$CONF_FILE"
+
+# Xavfsiz config o'qish
+get_conf() { grep "^${1}=" "$CONF_FILE" | head -1 | cut -d'"' -f2; }
+
+BOT_TOKEN=$(get_conf BOT_TOKEN)
+CHAT_ID=$(get_conf CHAT_ID)
 
 QUEUE_DIR="/var/log/sentinel/queue"
-PID_FILE="/tmp/sentinel-sender.pid"
+PID_FILE="/var/log/sentinel/sentinel-sender.pid"
 API_URL="https://api.telegram.org/bot${BOT_TOKEN}"
 BATCH_WAIT=5       # sekund — yangi xabarlar uchun kutish
 MAX_IDLE=60         # sekund — queue bo'sh bo'lsa o'chish
@@ -32,11 +37,6 @@ cleanup() {
     rm -f "$PID_FILE"
 }
 trap cleanup EXIT
-
-# GeoIP link (API chaqirmasdan, faqat link berish)
-get_geoip_link() {
-    echo "https://ip-api.com/#${1}"
-}
 
 # Xabar yuborish
 send_telegram() {

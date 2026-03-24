@@ -12,11 +12,18 @@ CONF_FILE="/etc/sentinel/sentinel.conf"
 if [ ! -f "$CONF_FILE" ]; then
     exit 1
 fi
-source "$CONF_FILE"
+
+# Xavfsiz config o'qish
+get_conf() { grep "^${1}=" "$CONF_FILE" | head -1 | cut -d'"' -f2; }
+
+BOT_TOKEN=$(get_conf BOT_TOKEN)
+CHAT_ID=$(get_conf CHAT_ID)
+DENY_MAP=$(get_conf DENY_MAP)
+LOG_FILE=$(get_conf LOG_FILE)
 
 API_URL="https://api.telegram.org/bot${BOT_TOKEN}"
 HOSTNAME=$(hostname)
-LOG_FILE="/var/log/sentinel/sentinel.log"
+LOG_FILE="${LOG_FILE:-/var/log/sentinel/sentinel.log}"
 
 log() {
     echo "[SENTINEL] $(date '+%Y-%m-%d %H:%M:%S') $1" >> "$LOG_FILE"

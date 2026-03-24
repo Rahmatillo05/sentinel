@@ -8,8 +8,8 @@
 # Bu ko'p ban bo'lganda ham ortiqcha reload'dan himoya qiladi.
 # ============================================
 
-RELOAD_FLAG="/tmp/sentinel-needs-reload"
-PID_FILE="/tmp/sentinel-reload-timer.pid"
+RELOAD_FLAG="/var/log/sentinel/sentinel-needs-reload"
+PID_FILE="/var/log/sentinel/sentinel-reload-timer.pid"
 LOG_FILE="/var/log/sentinel/sentinel.log"
 INTERVAL=10
 

@@ -8,9 +8,11 @@
 # yuklab olib, Fail2ban whitelist'ga qo'shadi.
 # ============================================
 
-CONF_FILE="/etc/sentinel/sentinel.conf"
-WHITELIST_DIR="/etc/sentinel"
+SENTINEL_DIR="/etc/sentinel"
+WHITELIST_DIR="$SENTINEL_DIR"
 LOG_FILE="/var/log/sentinel/sentinel.log"
+
+mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
 
 log() {
     echo "[SENTINEL] $(date '+%Y-%m-%d %H:%M:%S') $1" >> "$LOG_FILE"
@@ -29,20 +31,38 @@ else
 fi
 
 # --- Bing IP diapazonlari ---
-# Bing rasmiy JSON endpoint'i yo'q, asosiy diapazonlar
-cat > "${WHITELIST_DIR}/whitelist-bing.conf" << 'BING'
+# Bing rasmiy IP JSON: https://www.bing.com/toolbox/bingbot.json
+BING_IPS=$(curl -s --max-time 30 "https://www.bing.com/toolbox/bingbot.json" 2>/dev/null)
+if echo "$BING_IPS" | grep -q "prefixes"; then
+    echo "$BING_IPS" | grep -o '"ipv4Prefix":"[^"]*"' | cut -d'"' -f4 > "${WHITELIST_DIR}/whitelist-bing.conf"
+    BING_COUNT=$(wc -l < "${WHITELIST_DIR}/whitelist-bing.conf" | tr -d ' ')
+    log "Bing IP: ${BING_COUNT} ta diapazon yuklandi"
+else
+    # Fallback — statik ro'yxat (2026-03 holatiga)
+    if [ ! -f "${WHITELIST_DIR}/whitelist-bing.conf" ]; then
+        cat > "${WHITELIST_DIR}/whitelist-bing.conf" << 'BING'
 40.77.167.0/24
 199.30.24.0/23
 157.55.39.0/24
 207.46.13.0/24
 40.77.188.0/22
 65.52.104.0/24
-207.46.0.0/16
 BING
-log "Bing IP: statik ro'yxat yozildi"
+    fi
+    log "Bing IP: API'dan yuklab bo'lmadi, mavjud fayl saqlanadi"
+fi
 
 # --- Yandex IP diapazonlari ---
-cat > "${WHITELIST_DIR}/whitelist-yandex.conf" << 'YANDEX'
+# Yandex rasmiy ro'yxat: https://yandex.com/ips
+YANDEX_IPS=$(curl -s --max-time 30 "https://yandex.com/ips" 2>/dev/null)
+if [ -n "$YANDEX_IPS" ] && echo "$YANDEX_IPS" | grep -qE '^[0-9]'; then
+    echo "$YANDEX_IPS" | grep -E '^[0-9]' > "${WHITELIST_DIR}/whitelist-yandex.conf"
+    YANDEX_COUNT=$(wc -l < "${WHITELIST_DIR}/whitelist-yandex.conf" | tr -d ' ')
+    log "Yandex IP: ${YANDEX_COUNT} ta diapazon yuklandi"
+else
+    # Fallback — statik ro'yxat (2026-03 holatiga)
+    if [ ! -f "${WHITELIST_DIR}/whitelist-yandex.conf" ]; then
+        cat > "${WHITELIST_DIR}/whitelist-yandex.conf" << 'YANDEX'
 5.255.253.0/24
 37.140.165.0/24
 77.88.22.0/23
@@ -56,7 +76,9 @@ cat > "${WHITELIST_DIR}/whitelist-yandex.conf" << 'YANDEX'
 199.21.99.0/24
 213.180.192.0/19
 YANDEX
-log "Yandex IP: statik ro'yxat yozildi"
+    fi
+    log "Yandex IP: API'dan yuklab bo'lmadi, mavjud fayl saqlanadi"
+fi
 
 # --- Barcha whitelist'larni birlashtirish ---
 {

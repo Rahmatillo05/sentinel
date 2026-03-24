@@ -9,7 +9,12 @@ CONF_FILE="/etc/sentinel/sentinel.conf"
 if [ ! -f "$CONF_FILE" ]; then
     exit 1
 fi
-source "$CONF_FILE"
+
+# Xavfsiz config o'qish
+get_conf() { grep "^${1}=" "$CONF_FILE" | head -1 | cut -d'"' -f2; }
+
+BOT_TOKEN=$(get_conf BOT_TOKEN)
+CHAT_ID=$(get_conf CHAT_ID)
 
 API_URL="https://api.telegram.org/bot${BOT_TOKEN}"
 HOSTNAME=$(hostname)

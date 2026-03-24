@@ -161,6 +161,11 @@ if [ "$ARCH_CHOICE" = "2" ]; then
         echo -e "${RED}Xato: Proxy subnet kiritilishi kerak.${NC}"
         exit 1
     fi
+    # Faqat IP/CIDR formatini qabul qilish
+    if ! echo "$PROXY_SUBNET" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(/[0-9]+)?$'; then
+        echo -e "${RED}Xato: Noto'g'ri format. Masalan: 10.0.0.5 yoki 10.0.0.0/8${NC}"
+        exit 1
+    fi
     echo -e "  Rejim: ${CYAN}Proxy ortida (${PROXY_SUBNET})${NC}"
 elif [ "$ARCH_CHOICE" = "3" ]; then
     ARCHITECTURE="monitor"
@@ -185,12 +190,31 @@ if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
     echo -e "${RED}Xato: BOT_TOKEN va CHAT_ID bo'sh bo'lmasligi kerak.${NC}"
     exit 1
 fi
+# Token format tekshirish (faqat raqam, harf, :, -)
+if ! echo "$BOT_TOKEN" | grep -qE '^[0-9]+:[A-Za-z0-9_-]+$'; then
+    echo -e "${RED}Xato: BOT_TOKEN formati noto'g'ri.${NC}"
+    exit 1
+fi
+# Chat ID format (raqam, manfiy bo'lishi mumkin)
+if ! echo "$CHAT_ID" | grep -qE '^-?[0-9]+$'; then
+    echo -e "${RED}Xato: CHAT_ID faqat raqam bo'lishi kerak.${NC}"
+    exit 1
+fi
 
 # Qo'shimcha whitelist IP'lar
 echo ""
 echo "  Doim ruxsat beriladigan IP'lar (sizning IP, monitoring, boshqa serverlar)"
 echo "  Bo'sh joy bilan ajrating. Bo'sh qoldirsangiz ham bo'ladi."
 read -p "  IP'lar: " EXTRA_WHITELIST_IPS
+# IP formatini tekshirish (agar kiritilgan bo'lsa)
+if [ -n "$EXTRA_WHITELIST_IPS" ]; then
+    for check_ip in $EXTRA_WHITELIST_IPS; do
+        if ! echo "$check_ip" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(/[0-9]+)?$'; then
+            echo -e "${RED}Xato: '${check_ip}' noto'g'ri IP format.${NC}"
+            exit 1
+        fi
+    done
+fi
 echo ""
 
 echo -n "  Telegram ulanish tekshirilmoqda... "
@@ -241,6 +265,8 @@ echo -e "${YELLOW}[5/8] Sentinel fayllar joylashtirilmoqda${NC}"
 
 # --- Papkalar yaratish ---
 mkdir -p "$SENTINEL_DIR" "$SENTINEL_LOG_DIR"
+chown root:root "$SENTINEL_DIR"
+chmod 700 "$SENTINEL_DIR"
 
 # --- Logrotate ---
 if [ -f "${SCRIPT_DIR}/config/sentinel-logrotate.conf" ]; then
