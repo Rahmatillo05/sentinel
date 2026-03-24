@@ -10,16 +10,29 @@ Internet → Nginx → Sentinel (Fail2ban) → Ban + Telegram xabar
 
 Sentinel Nginx access loglarini kuzatadi. Shubhali so'rov aniqlansa — IP bloklanadi va sizga Telegram orqali xabar keladi.
 
-## Tezkor o'rnatish
+## O'rnatish
 
+**git bilan:**
 ```bash
 git clone https://github.com/Rahmatillo05/sentinel.git
 cd sentinel
 sudo bash install.sh
 ```
 
-Script sizdan 3 narsa so'raydi:
-- Nginx to'g'ridan-to'g'ri yoki proxy ortidami
+**git'siz:**
+```bash
+curl -sSL https://raw.githubusercontent.com/Rahmatillo05/sentinel/main/install-remote.sh -o /tmp/sentinel-setup.sh
+sudo bash /tmp/sentinel-setup.sh
+```
+
+**wget bilan:**
+```bash
+wget -qO /tmp/sentinel-setup.sh https://raw.githubusercontent.com/Rahmatillo05/sentinel/main/install-remote.sh
+sudo bash /tmp/sentinel-setup.sh
+```
+
+Script sizdan so'raydi:
+- Rejim — to'g'ridan-to'g'ri, proxy ortida yoki faqat monitoring
 - Telegram bot token va chat ID
 - Whitelist IP'lar (ixtiyoriy)
 
