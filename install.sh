@@ -355,7 +355,7 @@ fi
 echo "  sentinel-telegram.conf — OK"
 
 # --- Scriptlar ---
-for script in notify.sh sender.sh whitelist-update.sh daily-report.sh health-check.sh reload-timer.sh; do
+for script in notify.sh sender.sh whitelist-update.sh daily-report.sh health-check.sh reload-timer.sh mode.sh; do
     if [ -f "${SCRIPT_DIR}/scripts/${script}" ]; then
         cp "${SCRIPT_DIR}/scripts/${script}" "${SENTINEL_BIN}/sentinel-${script}"
         chmod +x "${SENTINEL_BIN}/sentinel-${script}"
@@ -626,6 +626,7 @@ echo "============================================"
 echo ""
 echo "Foydali buyruqlar:"
 echo "  sentinel-test.sh                          — Sentinel test"
+echo "  sentinel-mode.sh                          — Rejim ko'rish/o'zgartirish"
 echo "  sentinel-uninstall.sh                     — Sentinel o'chirish"
 echo "  fail2ban-client status                    — umumiy holat"
 echo "  fail2ban-client status sentinel-scanner   — scanner jail"
