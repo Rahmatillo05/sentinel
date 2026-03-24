@@ -119,8 +119,25 @@ fi
 
 echo -e "  OS:       ${CYAN}${OS_NAME}${NC}"
 echo -e "  Paketlar: ${CYAN}${PKG_MANAGER}${NC}"
-echo -e "  Firewall: ${CYAN}${FIREWALL_BACKEND}${NC}"
 echo -e "  Nginx:    ${CYAN}$(nginx -v 2>&1 | cut -d/ -f2)${NC}"
+
+if [ "$FIREWALL_BACKEND" = "none" ]; then
+    echo -e "  Firewall: ${YELLOW}topilmadi${NC}"
+    echo ""
+    echo -e "  ${YELLOW}OGOHLANTIRISH: Firewall (nftables/firewalld/iptables) topilmadi.${NC}"
+    echo "  Web hujumlar Nginx darajasida bloklanadi (ishlaydi)."
+    echo "  Lekin SSH brute force bloklash ISHLAMAYDI."
+    echo ""
+    echo "  Tavsiya: nftables yoki firewalld o'rnating."
+    echo ""
+    read -p "  Davom etasizmi? [y/N]: " FW_CONFIRM
+    if [ "$FW_CONFIRM" != "y" ] && [ "$FW_CONFIRM" != "Y" ]; then
+        echo "Bekor qilindi."
+        exit 0
+    fi
+else
+    echo -e "  Firewall: ${CYAN}${FIREWALL_BACKEND}${NC}"
+fi
 
 # ============================================
 # [2/8] Arxitektura so'rash
@@ -128,11 +145,12 @@ echo -e "  Nginx:    ${CYAN}$(nginx -v 2>&1 | cut -d/ -f2)${NC}"
 echo ""
 echo -e "${YELLOW}[2/8] Arxitektura sozlamalari${NC}"
 echo ""
-echo "  Nginx qanday ishlaydi?"
+echo "  Rejim tanlang:"
 echo "    1) To'g'ridan-to'g'ri (Internet → Nginx)"
 echo "    2) Proxy ortida (Internet → HAProxy/LB → Nginx)"
+echo "    3) Faqat monitoring (bloklash yo'q, faqat Telegram xabar)"
 echo ""
-read -p "  Tanlovingiz [1/2] (default: 1): " ARCH_CHOICE
+read -p "  Tanlovingiz [1/2/3] (default: 1): " ARCH_CHOICE
 ARCH_CHOICE=${ARCH_CHOICE:-1}
 
 if [ "$ARCH_CHOICE" = "2" ]; then
@@ -143,11 +161,15 @@ if [ "$ARCH_CHOICE" = "2" ]; then
         echo -e "${RED}Xato: Proxy subnet kiritilishi kerak.${NC}"
         exit 1
     fi
-    echo -e "  Arxitektura: ${CYAN}Proxy ortida (${PROXY_SUBNET})${NC}"
+    echo -e "  Rejim: ${CYAN}Proxy ortida (${PROXY_SUBNET})${NC}"
+elif [ "$ARCH_CHOICE" = "3" ]; then
+    ARCHITECTURE="monitor"
+    PROXY_SUBNET=""
+    echo -e "  Rejim: ${CYAN}Faqat monitoring (bloklash o'chirilgan)${NC}"
 else
     ARCHITECTURE="direct"
     PROXY_SUBNET=""
-    echo -e "  Arxitektura: ${CYAN}To'g'ridan-to'g'ri${NC}"
+    echo -e "  Rejim: ${CYAN}To'g'ridan-to'g'ri${NC}"
 fi
 
 # ============================================
@@ -322,36 +344,33 @@ echo ""
 echo -e "${YELLOW}[6/8] Jail konfiguratsiya yaratilmoqda${NC}"
 
 # Action strategiyasini aniqlash
-if [ "$ARCHITECTURE" = "proxy" ]; then
+if [ "$ARCHITECTURE" = "monitor" ]; then
+    # Faqat monitoring — bloklash yo'q, faqat Telegram
+    WEB_ACTION="action   = sentinel-telegram[name=%(__name__)s]"
+    SSH_ACTION="action   = sentinel-telegram[name=sshd]"
+    RECIDIVE_ACTION="banaction = sentinel-telegram"
+elif [ "$ARCHITECTURE" = "proxy" ]; then
     # Proxy ortida — faqat nginx-block-map
     WEB_ACTION="action   = sentinel-nginx-block[deny_map=${NGINX_CONF_DIR}/sentinel-deny.map]
            sentinel-telegram[name=%(__name__)s]"
+    SSH_ACTION="action   = sentinel-telegram[name=sshd]"
+    RECIDIVE_ACTION="banaction = sentinel-nginx-block"
 else
     if [ -n "$BANACTION" ]; then
         # To'g'ridan-to'g'ri — firewall + nginx-block-map
         WEB_ACTION="action   = ${BANACTION}[name=%(__name__)s, port=\"http,https\", protocol=tcp]
            sentinel-nginx-block[deny_map=${NGINX_CONF_DIR}/sentinel-deny.map]
            sentinel-telegram[name=%(__name__)s]"
+        SSH_ACTION="action   = ${BANACTION}[name=sshd, port=\"ssh\", protocol=tcp]
+           sentinel-telegram[name=sshd]"
+        RECIDIVE_ACTION="banaction = ${BANACTION_ALL}"
     else
         # Firewall yo'q — faqat nginx-block-map
         WEB_ACTION="action   = sentinel-nginx-block[deny_map=${NGINX_CONF_DIR}/sentinel-deny.map]
            sentinel-telegram[name=%(__name__)s]"
+        SSH_ACTION="action   = sentinel-telegram[name=sshd]"
+        RECIDIVE_ACTION="banaction = sentinel-nginx-block"
     fi
-fi
-
-# SSH action
-if [ -n "$BANACTION" ]; then
-    SSH_ACTION="action   = ${BANACTION}[name=sshd, port=\"ssh\", protocol=tcp]
-           sentinel-telegram[name=sshd]"
-else
-    SSH_ACTION="action   = sentinel-telegram[name=sshd]"
-fi
-
-# Recidive action
-if [ -n "$BANACTION_ALL" ]; then
-    RECIDIVE_ACTION="banaction = ${BANACTION_ALL}"
-else
-    RECIDIVE_ACTION="banaction = sentinel-nginx-block"
 fi
 
 # Whitelist tayyorlash
@@ -417,7 +436,7 @@ port     = http,https
 filter   = sentinel-ratelimit
 logpath  = /var/log/nginx/*_access.log
            /var/log/nginx/access.log
-maxretry = 50
+maxretry = 100
 findtime = 60
 bantime  = 3600
 ignoreip = ${IGNORE_IPS}
@@ -429,7 +448,7 @@ port     = http,https
 filter   = sentinel-bruteforce
 logpath  = /var/log/nginx/*_access.log
            /var/log/nginx/access.log
-maxretry = 10
+maxretry = 15
 findtime = 300
 bantime  = 3600
 ignoreip = ${IGNORE_IPS}
@@ -453,7 +472,7 @@ enabled  = true
 port     = ssh
 filter   = sshd
 backend  = ${SSHD_BACKEND}
-maxretry = 3
+maxretry = 5
 findtime = 600
 bantime  = 86400
 ignoreip = ${IGNORE_IPS}
